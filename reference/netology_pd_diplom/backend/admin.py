@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import F, Sum
 
 from backend.models import User, Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken
@@ -53,9 +54,33 @@ class ProductParameterAdmin(admin.ModelAdmin):
     pass
 
 
+# список позиций заказа
+class OrderItemsInline(admin.TabularInline):
+    model = OrderItem
+    list_display = ('product_info', 'get_item_price', 'quantity', 'get_item_shop',)
+    readonly_fields = list_display
+    can_delete = False
+
+    @admin.display(description='Цена')
+    def get_item_price(self, obj):
+        return obj.product_info.price
+
+    @admin.display(description='Магазин')
+    def get_item_shop(self, obj):
+        return obj.product_info.shop
+
+
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    pass
+    inlines = [OrderItemsInline, ]
+    list_display = ('user', 'dt', 'state', 'contact', 'order_sum')
+    readonly_fields = ('user', 'dt', 'contact', 'order_sum')
+
+    # итоговая сумма заказа
+    @admin.display(description='Сумма заказа (итого)')
+    def order_sum(self, obj):
+        total_sum = obj.ordered_items.aggregate(total_sum=Sum(F('quantity') * F('product_info__price')))
+        return total_sum.get('total_sum')
 
 
 @admin.register(OrderItem)
