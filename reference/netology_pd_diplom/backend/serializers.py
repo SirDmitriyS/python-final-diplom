@@ -87,3 +87,37 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ('id', 'ordered_items', 'state', 'dt', 'total_sum', 'contact',)
         read_only_fields = ('id',)
+
+
+# сериализатор для экспорта товаров партнера (магазина) - список параметров товаров
+class PartnerProductParameterSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = ProductParameter
+        fields = ('parameter.name', 'value',)
+
+
+# сериализатор для экспорта товаров партнера (магазина) - список товаров
+class PartnerProductInfoSerializer(serializers.ModelSerializer):
+    category = serializers.CharField(source='product.category.name')
+    name = serializers.CharField(source='product.name')
+    parameters = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductInfo
+        fields = ('id', 'category', 'model', 'name', 'price', 'price_rrc', 'quantity', 'parameters',)
+        read_only_fields = ('id',)
+
+    def get_parameters(self, obj):
+        return [{param.parameter.name: param.value} for param in obj.product_parameters.all()]
+
+
+# сериализатор для экспорта товаров партнера (магазина)
+class PartnerExportSerializer(serializers.ModelSerializer):
+    shop = serializers.CharField(source='name')
+    categories = CategorySerializer(read_only=True, many=True)
+    goods = PartnerProductInfoSerializer(source='product_infos', read_only=True, many=True)
+
+    class Meta:
+        model = Shop
+        fields = ('shop', 'categories', 'goods')

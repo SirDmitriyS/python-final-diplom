@@ -1,25 +1,29 @@
-from distutils.util import strtobool
+from backend.util import strtobool
 from rest_framework.request import Request
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
+from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import Q, Sum, F
 from django.http import JsonResponse
+from django.urls import reverse
 from requests import get
 from rest_framework.authtoken.models import Token
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_yaml.renderers import YAMLRenderer
 from ujson import loads as load_json
-from yaml import load as load_yaml, Loader
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
-    Contact, ConfirmEmailToken
+    Contact, ConfirmEmailToken, STATE_CHOICES
 from backend.serializers import UserSerializer, CategorySerializer, ShopSerializer, ProductInfoSerializer, \
     OrderItemSerializer, OrderSerializer, ContactSerializer
 from backend.signals import new_user_registered, new_order
+from netology_pd_diplom.celery_app import get_task
+from backend.celery_tasks import send_email, partner_export, partner_update
 
 
 class RegisterAccount(APIView):
@@ -431,33 +435,43 @@ class PartnerUpdate(APIView):
             else:
                 stream = get(url).content
 
-                data = load_yaml(stream, Loader=Loader)
+                async_task = partner_update.delay(stream, request.user.id)
 
-                shop, _ = Shop.objects.get_or_create(name=data['shop'], user_id=request.user.id)
-                for category in data['categories']:
-                    category_object, _ = Category.objects.get_or_create(id=category['id'], name=category['name'])
-                    category_object.shops.add(shop.id)
-                    category_object.save()
-                ProductInfo.objects.filter(shop_id=shop.id).delete()
-                for item in data['goods']:
-                    product, _ = Product.objects.get_or_create(name=item['name'], category_id=item['category'])
-
-                    product_info = ProductInfo.objects.create(product_id=product.id,
-                                                              external_id=item['id'],
-                                                              model=item['model'],
-                                                              price=item['price'],
-                                                              price_rrc=item['price_rrc'],
-                                                              quantity=item['quantity'],
-                                                              shop_id=shop.id)
-                    for name, value in item['parameters'].items():
-                        parameter_object, _ = Parameter.objects.get_or_create(name=name)
-                        ProductParameter.objects.create(product_info_id=product_info.id,
-                                                        parameter_id=parameter_object.id,
-                                                        value=value)
-
-                return JsonResponse({'Status': True})
+                return JsonResponse({'Status': True, 'Task_id': async_task.id})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+# экспорт товаров партнера
+class PartnerExport(APIView):
+    renderer_classes = [YAMLRenderer]
+
+    def get(self, request, *args, **kwargs):
+        """
+        Export partner price in YAML format.
+
+        Parameters:
+            request (HttpRequest): The HTTP request object.
+            args (tuple): Positional arguments.
+            kwargs (dict): Keyword arguments.
+
+        Returns:
+            JsonResponse: The JSON response containing the status of the operation and any errors.
+                If the user is not authenticated, returns a JSON response with status False and an error message.
+                If the user is not a shop, returns a JSON response with status False and an error message.
+                Otherwise, returns a JSON response with status True, the task ID, and the URL for the results.
+        """
+
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+
+        async_task = partner_export.delay(request.user.id)
+
+        return JsonResponse({'Status': True, 'Task_id': async_task.task_id, 'url': reverse('backend:results')})
+
 
 
 class PartnerState(APIView):
@@ -552,6 +566,56 @@ class PartnerOrders(APIView):
 
         serializer = OrderSerializer(order, many=True)
         return Response(serializer.data)
+    
+    # обновить статус заказа
+    def put(self, request, *args, **kwargs):
+        """
+        Updates the state of an order for a shop user.
+
+        Args:
+            request (Request): The Django request object.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+
+        Returns:
+            JsonResponse: A JSON response indicating the status of the operation and any errors.
+
+        Notes:
+            - This function requires the user to be authenticated and have the type 'shop'.
+            - The request data must contain the 'id' and 'state' keys.
+            - The 'state' value must be one of the valid choices (excluding 'basket').
+            - The order with the specified 'id' is retrieved and its state is updated.
+            - An email is sent to the user with the updated order status.
+            - If any errors occur, a JSON response with the appropriate error message is returned.
+        """
+
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+
+        if request.user.type != 'shop':
+            return JsonResponse({'Status': False, 'Error': 'Только для магазинов'}, status=403)
+
+        if not {'id', 'state'}.issubset(request.data):
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+        order_id = request.data.get('id')
+        order_state = request.data.get('state')
+        if order_state:
+            if not {order_state}.issubset([state[0] for state in STATE_CHOICES]) or order_state == 'basket':
+                return JsonResponse({'Status': False, 'Errors': 'Указан недопустимый статус заказа'})
+
+        order = Order.objects.get(id=order_id)
+        order.state = order_state
+        order.save()
+
+        send_email.delay_on_commit(
+            title=f'Статус Вашего заказа {order_id} изменился',
+            message=f'У Вашего заказа {order_id} новый статус: {dict(STATE_CHOICES).get(order.state)}',
+            sender=settings.EMAIL_HOST_USER,
+            recipients=[order.user.email],
+        )
+
+        return JsonResponse({'Status': True})
 
 
 class ContactView(APIView):
@@ -736,3 +800,44 @@ class OrderView(APIView):
                         return JsonResponse({'Status': True})
 
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+
+# получить результат задачи, выполняемой асинхронно в Celery
+class ResultsView(APIView):
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Get the result of a task executed asynchronously in Celery.
+
+        Parameters:
+            request (HttpRequest): The HTTP request object.
+            args (tuple): Positional arguments.
+            kwargs (dict): Keyword arguments.
+
+        Returns:
+            JsonResponse: The JSON response containing the status of the operation, the task ID, the state of the task, and the results.
+                If the user is not authenticated, returns a JSON response with status False and an error message.
+                If the required arguments are not specified, returns a JSON response with status False and an error message.
+                If the task with the specified ID is not found, returns a JSON response with status False and an error message.
+                Otherwise, returns a JSON response with status True, the task ID, the state of the task, and the results (if task finished successfully) or the error message (if task failed).
+        """
+        
+        if not request.user.is_authenticated:
+            return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
+        
+        if not {'task_id',}.issubset(request.data):
+            return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
+
+        try:
+            task = get_task(request.data['task_id'])
+        except:
+            return JsonResponse({'Status': False, 'Errors': f'Не удалось найти задачу с идентификатором {request.data['task_id']}'})
+
+        return JsonResponse(
+            {
+                'Status': True, 
+                'Task_id': request.data['task_id'], 
+                'State': task.state, 
+                'Results': (task.result if task.state == 'SUCCESS' else str(task.result))
+            }
+        )
