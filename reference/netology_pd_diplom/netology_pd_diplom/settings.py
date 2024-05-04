@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from dotenv import load_dotenv
+
+# загрузить переменные окружения из файла ".env"
+load_dotenv()
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,8 +82,12 @@ WSGI_APPLICATION = 'netology_pd_diplom.wsgi.application'
 DATABASES = {
 
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'HOST': os.getenv('PG_HOST'),
+        'PORT': os.getenv('PG_PORT'),
+        'NAME': os.getenv('PG_DB'),        
+        'USER': os.getenv('PG_USER'),
+        'PASSWORD': os.getenv('PG_PASSWORD'),
     }
 
 
@@ -126,11 +134,11 @@ AUTH_USER_MODEL = 'backend.User'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_USE_TLS = True
 
-EMAIL_HOST = 'smtp.mail.ru'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.mail.ru')
 
-EMAIL_HOST_USER = 'netology.diplom@mail.ru'
-EMAIL_HOST_PASSWORD = 'CLdm7yW4U9nivz9mbexu'
-EMAIL_PORT = '465'
+EMAIL_HOST_USER = os.getenv('EMAIL_USER', 'netology.diplom@mail.ru')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD', 'CLdm7yW4U9nivz9mbexu')
+EMAIL_PORT = os.getenv('EMAIL_PORT', '465')
 EMAIL_USE_SSL = True
 SERVER_EMAIL = EMAIL_HOST_USER
 
@@ -141,7 +149,7 @@ REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
-
+        'rest_framework_yaml.renderers.YAMLRenderer',
     ),
 
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -149,6 +157,12 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     ),
 
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Настройки Celery
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/1')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://127.0.0.1:6379/2')
