@@ -537,6 +537,7 @@ class PartnerOrders(APIView):
     Класс для получения заказов поставщиками
      Methods:
     - get: Retrieve the orders associated with the authenticated partner.
+    - put: Update the state of an order.
 
     Attributes:
     - None
@@ -574,8 +575,6 @@ class PartnerOrders(APIView):
 
         Args:
             request (Request): The Django request object.
-            *args: Variable length argument list.
-            **kwargs: Arbitrary keyword arguments.
 
         Returns:
             JsonResponse: A JSON response indicating the status of the operation and any errors.
@@ -804,15 +803,16 @@ class OrderView(APIView):
 
 # получить результат задачи, выполняемой асинхронно в Celery
 class ResultsView(APIView):
-    
+    """
+    Get the result of a task executed asynchronously in Celery.
+    """
+
     def get(self, request, *args, **kwargs):
         """
         Get the result of a task executed asynchronously in Celery.
 
-        Parameters:
-            request (HttpRequest): The HTTP request object.
-            args (tuple): Positional arguments.
-            kwargs (dict): Keyword arguments.
+        Args:
+            request (Request): The Django request object.
 
         Returns:
             JsonResponse: The JSON response containing the status of the operation, the task ID, the state of the task, and the results.
