@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_rest_passwordreset',
+    'drf_spectacular',
     'backend',
 ]
 
@@ -159,6 +160,8 @@ REST_FRAMEWORK = {
 
     'TEST_REQUEST_DEFAULT_FORMAT': 'json',
 
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -166,3 +169,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Настройки Celery
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/1')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://127.0.0.1:6379/2')
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Дипломный проект по Python',
+    'DESCRIPTION': 'Дипломный проект профессии "Python-разработчик: расширенный курс" (Нетология)',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
