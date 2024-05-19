@@ -15,7 +15,9 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_yaml.renderers import YAMLRenderer
+from rest_framework import serializers
 from ujson import loads as load_json
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken, STATE_CHOICES
@@ -24,11 +26,8 @@ from backend.serializers import UserSerializer, CategorySerializer, ShopSerializ
 from backend.signals import new_user_registered, new_order
 from netology_pd_diplom.celery_app import get_task
 from backend.celery_tasks import send_email, partner_export, partner_update
-
-from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
-from drf_spectacular.types import OpenApiTypes
-from rest_framework import serializers
-from backend.schema import StatusSerializer, StatusAuthErrSerializer, ItemsSerializer
+from backend.schema import StatusSerializer, StatusAuthErrSerializer, ItemsSerializer, \
+    ConfirmEmailSerializer, NewTaskSerializer, OrderViewSerializer
 
 
 class RegisterAccount(APIView):
@@ -77,6 +76,14 @@ class RegisterAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(
+    tags=['Users'],
+    summary='Confirm user email address',
+    request=ConfirmEmailSerializer,
+    responses={
+        200: StatusSerializer,
+    },
+)
 class ConfirmAccount(APIView):
     """
     Класс для подтверждения почтового адреса
@@ -109,6 +116,13 @@ class ConfirmAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(
+    tags=['Users'],
+    responses={
+        200: StatusSerializer,
+        403: StatusAuthErrSerializer,
+    },
+)
 class AccountDetails(APIView):
     """
     A class for managing user account details.
@@ -122,6 +136,13 @@ class AccountDetails(APIView):
     """
 
     # получить данные
+    @extend_schema(
+        summary='Retrieve the details of the authenticated user',
+        responses={
+            200: UserSerializer,
+            403: StatusAuthErrSerializer,
+        }
+    )
     def get(self, request: Request, *args, **kwargs):
         """
                Retrieve the details of the authenticated user.
@@ -139,6 +160,10 @@ class AccountDetails(APIView):
         return Response(serializer.data)
 
     # Редактирование методом POST
+    @extend_schema(
+        summary='Update the account details of the authenticated user',
+        request=UserSerializer,
+    )
     def post(self, request, *args, **kwargs):
         """
                 Update the account details of the authenticated user.
@@ -206,6 +231,13 @@ class LoginAccount(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(
+    tags=['Shop'],
+    summary='Retrieve categories of products',
+    responses={
+        200: CategorySerializer
+    },
+)
 class CategoryView(ListAPIView):
     """
     Класс для просмотра категорий
@@ -214,6 +246,13 @@ class CategoryView(ListAPIView):
     serializer_class = CategorySerializer
 
 
+@extend_schema(
+    tags=['Shop'],
+    summary='Retrieve shops',
+    responses={
+        200: ShopSerializer
+    },
+)
 class ShopView(ListAPIView):
     """
     Класс для просмотра списка магазинов
@@ -222,6 +261,13 @@ class ShopView(ListAPIView):
     serializer_class = ShopSerializer
 
 
+@extend_schema(
+    tags=['Shop'],
+    summary='Search products',
+    responses={
+        200: ProductInfoSerializer
+    },
+)
 class ProductInfoView(APIView):
     """
         A class for searching products.
@@ -403,6 +449,20 @@ class BasketView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(
+    tags=['Partner'],
+    summary='Update partner information',
+    request=inline_serializer(
+                    name='PartnerUpdatePostRequest',
+                    fields={
+                        'url': serializers.CharField(),
+                    },
+                ),
+    responses={
+        200: NewTaskSerializer,
+        403: StatusAuthErrSerializer,
+    },
+)
 class PartnerUpdate(APIView):
     """
     A class for updating partner information.
@@ -479,6 +539,9 @@ class PartnerExport(APIView):
 
 
 
+@extend_schema(
+    tags=['Partner']
+)
 class PartnerState(APIView):
     """
        A class for managing partner state.
@@ -490,6 +553,13 @@ class PartnerState(APIView):
        - None
        """
     # получить текущий статус
+    @extend_schema(
+        summary='Retrieve the state of the partner',
+        responses={
+            200: ShopSerializer,
+            403: StatusAuthErrSerializer,
+        },
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the state of the partner.
@@ -511,6 +581,20 @@ class PartnerState(APIView):
         return Response(serializer.data)
 
     # изменить текущий статус
+    @extend_schema(
+        tags=['Partner'],
+        summary='Update the state of a partner',
+        request=inline_serializer(
+                    name='PartnerStatePostRequest',
+                    fields={
+                        'state': serializers.CharField(),
+                    },
+                ),
+        responses={
+            200: StatusSerializer,
+            403: StatusAuthErrSerializer,
+        },
+    )
     def post(self, request, *args, **kwargs):
         """
                Update the state of a partner.
@@ -628,8 +712,7 @@ class PartnerOrders(APIView):
     responses={
         200: StatusSerializer,
         403: StatusAuthErrSerializer,
-    }
-    ,
+    },
 )
 class ContactView(APIView):
     """
@@ -767,6 +850,14 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
 
+@extend_schema(
+    tags=['Shop'],
+    summary='Confirm user email address',
+    request=ConfirmEmailSerializer,
+    responses={
+        200: StatusSerializer,
+    },
+)
 class OrderView(APIView):
     """
     Класс для получения и размешения заказов пользователями
@@ -781,6 +872,13 @@ class OrderView(APIView):
     """
 
     # получить мои заказы
+    @extend_schema(
+        summary='Retrieve the details of user orders',
+        responses={
+            200: OrderSerializer,
+            403: StatusAuthErrSerializer,
+        },
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the details of user orders.
@@ -803,6 +901,14 @@ class OrderView(APIView):
         return Response(serializer.data)
 
     # разместить заказ из корзины
+    @extend_schema(
+        summary='Retrieve the details of user orders',
+        request=OrderViewSerializer,
+        responses={
+            200: StatusSerializer,
+            403: StatusAuthErrSerializer,
+        },
+    )
     def post(self, request, *args, **kwargs):
         """
                Put an order and send a notification.

@@ -1,16 +1,8 @@
-# from drf_spectacular.extensions import OpenApiViewExtension
-from typing import Type
-from drf_spectacular.utils import inline_serializer, extend_schema, extend_schema_field, OpenApiParameter
+from drf_spectacular.utils import inline_serializer, extend_schema
 from rest_framework import serializers
-from backend.serializers import OrderSerializer, ContactSerializer
-
-
+from backend.serializers import OrderSerializer, OrderItemSerializer
 from drf_spectacular.extensions import OpenApiViewExtension
-from drf_spectacular.types import OpenApiTypes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework.views import APIView
+
 
 class StatusSerializer(serializers.Serializer):
     Status = serializers.BooleanField()
@@ -22,8 +14,22 @@ class StatusAuthErrSerializer(serializers.Serializer):
     Error = serializers.CharField(default='Log in required')
 
 
+class NewTaskSerializer(serializers.Serializer):
+    Status = serializers.BooleanField()
+    Task_id = serializers.CharField()
+
 class ItemsSerializer(serializers.Serializer):
     items = serializers.CharField()
+
+
+class ConfirmEmailSerializer(serializers.Serializer):
+    email = serializers.CharField()
+    token = serializers.CharField()
+
+
+class OrderViewSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    contact = serializers.IntegerField()
 
 
 class FixRegisterAccount(OpenApiViewExtension):
@@ -49,10 +55,10 @@ class FixRegisterAccount(OpenApiViewExtension):
                 (200, 'application/json'): StatusSerializer
             },
         )
-        class Fixed(self.target_class):
+        class FixedRegisterAccount(self.target_class):
             pass
 
-        return Fixed
+        return FixedRegisterAccount
 
 
 class FixLoginAccount(OpenApiViewExtension):
@@ -80,10 +86,10 @@ class FixLoginAccount(OpenApiViewExtension):
                     ),
             },
         )
-        class Fixed(self.target_class):
+        class FixedLoginAccount(self.target_class):
             pass
 
-        return Fixed
+        return FixedLoginAccount
 
 
 class FixBasketView(OpenApiViewExtension):
@@ -96,13 +102,15 @@ class FixBasketView(OpenApiViewExtension):
                 summary='User''s basket',
                 responses={
                     (200, 'application/json'): OrderSerializer,
+                    (403, 'application/json'): StatusAuthErrSerializer,
                 },
             )
-        class Fixed(self.target_class):
+        class FixedBasketView(self.target_class):
             @extend_schema(
                 summary='Retrieve the items in the user''s basket',
                 responses={
                     (200, 'application/json'): OrderSerializer,
+                    (403, 'application/json'): StatusAuthErrSerializer,
                 },
             )
             def get(self, request, *args, **kwargs):
@@ -110,14 +118,18 @@ class FixBasketView(OpenApiViewExtension):
 
             @extend_schema(
                 summary='Add an item to the user''s basket',
+                request={
+                    'items': OrderItemSerializer(many=True),
+                },
                 responses={
-                (200, 'application/json'): inline_serializer(
+                    (200, 'application/json'): inline_serializer(
                         name='BasketViewPostOk',
                         fields={
                             'Status': serializers.BooleanField(),
                             'Создано объектов': serializers.CharField(),
                         },
                     ),
+                    (403, 'application/json'): StatusAuthErrSerializer,
             },
             )
             def post(self, request, *args, **kwargs):
@@ -125,14 +137,18 @@ class FixBasketView(OpenApiViewExtension):
 
             @extend_schema(
                 summary='Update the quantity of an item in the user''s basket',
+                request={
+                    'items': OrderItemSerializer(many=True),
+                },
                 responses={
-                (200, 'application/json'): inline_serializer(
-                        name='BasketViewPutOk',
-                        fields={
-                            'Status': serializers.BooleanField(),
-                            'Создано объектов': serializers.CharField(),
-                        },
+                    (200, 'application/json'): inline_serializer(
+                            name='BasketViewPutOk',
+                            fields={
+                                'Status': serializers.BooleanField(),
+                                'Создано объектов': serializers.CharField(),
+                            },
                     ),
+                    (403, 'application/json'): StatusAuthErrSerializer,
             },
             )
             def put(self, request, *args, **kwargs):
@@ -140,6 +156,7 @@ class FixBasketView(OpenApiViewExtension):
 
             @extend_schema(
                 summary='Remove an item from the user''s basket',
+                request=OrderItemSerializer,
                 responses={
                 (200, 'application/json'): inline_serializer(
                         name='BasketViewDeleteOk',
@@ -153,7 +170,7 @@ class FixBasketView(OpenApiViewExtension):
             def delete(self, request, *args, **kwargs):
                 pass
         
-        return Fixed
+        return FixedBasketView
 
 
 class FixPartnerExport(OpenApiViewExtension):
@@ -175,10 +192,10 @@ class FixPartnerExport(OpenApiViewExtension):
                     ),
             },
         )
-        class Fixed(self.target_class):
+        class FixedPartnerExport(self.target_class):
             pass
 
-        return Fixed
+        return FixedPartnerExport
 
 
 class FixPartnerOrders(OpenApiViewExtension):
@@ -189,7 +206,7 @@ class FixPartnerOrders(OpenApiViewExtension):
         @extend_schema(
             tags=['Partner'],
         )
-        class Fixed(self.target_class):
+        class FixedPartnerOrders(self.target_class):
             @extend_schema(
                 summary='Retrieve the orders associated with the authenticated partner',
                 responses={
@@ -208,7 +225,7 @@ class FixPartnerOrders(OpenApiViewExtension):
             def put(self, request, *args, **kwargs):
                 pass
 
-        return Fixed
+        return FixedPartnerOrders
 
 
 class FixResultsView(OpenApiViewExtension):
@@ -216,7 +233,7 @@ class FixResultsView(OpenApiViewExtension):
 
     def view_replacement(self):
 
-        class Fixed(self.target_class):
+        class FixedResultsView(self.target_class):
             @extend_schema(
                 tags=['Common'],
                 summary='Get the result of a task executed asynchronously in Celery',
@@ -240,4 +257,4 @@ class FixResultsView(OpenApiViewExtension):
             def get(self, request, *args, **kwargs):
                 pass
 
-        return Fixed
+        return FixedResultsView
