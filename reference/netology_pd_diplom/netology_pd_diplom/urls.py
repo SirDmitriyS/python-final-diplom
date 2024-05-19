@@ -39,6 +39,7 @@ def large_resource(request):
 
 
 urlpatterns = [
+    path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
     path('api/v1/', include('backend.urls', namespace='backend')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
