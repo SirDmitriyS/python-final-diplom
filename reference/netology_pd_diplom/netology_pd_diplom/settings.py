@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django_rest_passwordreset',
     'drf_spectacular',
     'cacheops',
+    'silk',
     'backend',
 ]
 
@@ -56,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware'
 ]
 
 ROOT_URLCONF = 'netology_pd_diplom.urls'
