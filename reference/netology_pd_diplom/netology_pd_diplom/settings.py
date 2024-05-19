@@ -196,7 +196,7 @@ SPECTACULAR_SETTINGS = {
 }
 
 # Настройки кэширования с использованием django-cacheops
-CACHEOPS_REDIS = "redis://127.0.0.1:6379/3"
+CACHEOPS_REDIS = os.getenv('CACHEOPS_REDIS', 'redis://127.0.0.1:6379/3')
 CACHEOPS_DEFAULTS = {
     'timeout': 60*60
 }
