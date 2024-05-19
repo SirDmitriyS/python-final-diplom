@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django_rest_passwordreset',
     'drf_spectacular',
     'cacheops',
+    'social_django',
     'backend',
 ]
 
@@ -72,6 +73,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'social_django.context_processors.backends',
+                'social_django.context_processors.login_redirect',
             ],
         },
     },
@@ -244,6 +247,24 @@ JET_THEMES = [
 ]
 JET_SIDE_MENU_COMPACT = True
 JET_CHANGE_FORM_SIBLING_LINKS = True
+
+# Настройки библиотки для авторизации через соц. сети
+MAILRU_KEY = os.getenv('SOCIAL_AUTH_MAILRU_KEY')
+MAILRU_SECRET = os.getenv('SOCIAL_AUTH_MAILRU_SECRET')
+if MAILRU_KEY and MAILRU_SECRET:
+    SOCIAL_AUTH_JSONFIELD_ENABLED = True
+    AUTHENTICATION_BACKENDS = (
+        'social_core.backends.mailru.MRGOAuth2',
+        'django.contrib.auth.backends.ModelBackend',
+    )
+    SOCIAL_AUTH_MAILRU_KEY = MAILRU_KEY
+    SOCIAL_AUTH_MAILRU_SECRET = MAILRU_SECRET
+    SOCIAL_AUTH_URL_NAMESPACE = 'social'
+    LOGIN_URL = 'social'
+    # LOGIN_URL = '/auth/login/mailru-oauth2/'
+    # LOGIN_REDIRECT_URL = '/'
+    # LOGOUT_REDIRECT_URL = '/'
+    print('Authorization throught MailRu was configured.')
 
 # Настройки Sentry (для перехвата ошибок)
 # только если в переменных окружения задан Sentry DSN

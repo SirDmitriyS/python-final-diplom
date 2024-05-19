@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from django.http import HttpResponse
+from django.conf import settings
+from django.contrib.auth import logout
 
 
 def trigger_error(request):
@@ -38,6 +40,8 @@ def large_resource(request):
     return HttpResponse("Done!")
 
 
+admin.site.login_template = 'admin/login.html'
+
 urlpatterns = [
     path('jet/', include('jet.urls', 'jet')),  # Django JET URLS
     path('admin/', admin.site.urls),
@@ -45,6 +49,8 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'), 
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('', include('social_django.urls', namespace='social')),
+    path('logout/', logout, {'next_page': settings.LOGOUT_REDIRECT_URL}, name='logout'),
     # тест использования Sentry для отслеживания ошибок
     path('sentry-debug/', trigger_error),
     # тест использования Sentry для поиска проблем с производительностью
