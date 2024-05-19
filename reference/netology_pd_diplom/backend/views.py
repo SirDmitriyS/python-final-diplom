@@ -510,6 +510,7 @@ class PartnerUpdate(APIView):
 # экспорт товаров партнера
 class PartnerExport(APIView):
     renderer_classes = [YAMLRenderer]
+    throttle_scope = 'export'
 
     def get(self, request, *args, **kwargs):
         """
@@ -945,6 +946,7 @@ class ResultsView(APIView):
     """
     Get the result of a task executed asynchronously in Celery.
     """
+    throttle_scope = 'celery_tasks'
 
     def get(self, request, *args, **kwargs):
         """
