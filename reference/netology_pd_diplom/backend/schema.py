@@ -182,7 +182,7 @@ class FixPartnerExport(OpenApiViewExtension):
             tags=['Partner'],
             summary='Export partner price in YAML format',
             responses={
-                (200, 'application/json'): inline_serializer(
+                200: inline_serializer(
                         name='PartnerExportResponseOk',
                         fields={
                             'Status': serializers.BooleanField(),
