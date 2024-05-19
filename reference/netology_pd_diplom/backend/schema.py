@@ -1,11 +1,29 @@
-from drf_spectacular.extensions import OpenApiViewExtension
-from drf_spectacular.utils import inline_serializer, extend_schema, extend_schema_field
+# from drf_spectacular.extensions import OpenApiViewExtension
+from typing import Type
+from drf_spectacular.utils import inline_serializer, extend_schema, extend_schema_field, OpenApiParameter
 from rest_framework import serializers
-from backend.serializers import OrderSerializer
+from backend.serializers import OrderSerializer, ContactSerializer
 
 
-class StatusOnlySerializer(serializers.Serializer):
+from drf_spectacular.extensions import OpenApiViewExtension
+from drf_spectacular.types import OpenApiTypes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+class StatusSerializer(serializers.Serializer):
     Status = serializers.BooleanField()
+    Errors = serializers.CharField()
+
+
+class StatusAuthErrSerializer(serializers.Serializer):
+    Status = serializers.BooleanField()
+    Error = serializers.CharField(default='Log in required')
+
+
+class ItemsSerializer(serializers.Serializer):
+    items = serializers.CharField()
 
 
 class FixRegisterAccount(OpenApiViewExtension):
@@ -28,7 +46,7 @@ class FixRegisterAccount(OpenApiViewExtension):
                 },
             ),
             responses={
-                (200, 'application/json'): StatusOnlySerializer
+                (200, 'application/json'): StatusSerializer
             },
         )
         class Fixed(self.target_class):
@@ -184,7 +202,7 @@ class FixPartnerOrders(OpenApiViewExtension):
             @extend_schema(
                 summary='Update the state of an order',
                 responses={
-                (200, 'application/json'): StatusOnlySerializer
+                (200, 'application/json'): StatusSerializer
             },
             )
             def put(self, request, *args, **kwargs):

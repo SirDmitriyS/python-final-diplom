@@ -25,6 +25,11 @@ from backend.signals import new_user_registered, new_order
 from netology_pd_diplom.celery_app import get_task
 from backend.celery_tasks import send_email, partner_export, partner_update
 
+from drf_spectacular.utils import extend_schema, OpenApiParameter, inline_serializer
+from drf_spectacular.types import OpenApiTypes
+from rest_framework import serializers
+from backend.schema import StatusSerializer, StatusAuthErrSerializer, ItemsSerializer
+
 
 class RegisterAccount(APIView):
     """
@@ -617,6 +622,15 @@ class PartnerOrders(APIView):
         return JsonResponse({'Status': True})
 
 
+@extend_schema(
+    tags=['User''s contacts'],
+    summary='User''s contacts',
+    responses={
+        200: StatusSerializer,
+        403: StatusAuthErrSerializer,
+    }
+    ,
+)
 class ContactView(APIView):
     """
        A class for managing contact information.
@@ -632,6 +646,13 @@ class ContactView(APIView):
        """
 
     # получить мои контакты
+    @extend_schema(
+        summary='Retrieve the contact information of the authenticated user',
+        responses={
+            200: ContactSerializer(many=True),
+            403: StatusAuthErrSerializer,
+        }
+    )
     def get(self, request, *args, **kwargs):
         """
                Retrieve the contact information of the authenticated user.
@@ -650,6 +671,10 @@ class ContactView(APIView):
         return Response(serializer.data)
 
     # добавить новый контакт
+    @extend_schema(
+        summary='Create new user''s contact',
+        request=ContactSerializer,
+    )
     def post(self, request, *args, **kwargs):
         """
                Create a new contact for the authenticated user.
@@ -664,9 +689,9 @@ class ContactView(APIView):
             return JsonResponse({'Status': False, 'Error': 'Log in required'}, status=403)
 
         if {'city', 'street', 'phone'}.issubset(request.data):
-            request.data._mutable = True
-            request.data.update({'user': request.user.id})
-            serializer = ContactSerializer(data=request.data)
+            new_contact = request.data
+            new_contact.update({'user': request.user.id})
+            serializer = ContactSerializer(data=new_contact)
 
             if serializer.is_valid():
                 serializer.save()
@@ -677,6 +702,10 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
     # удалить контакт
+    @extend_schema(
+        summary='Delete the contact of the authenticated user',
+        request=ItemsSerializer,
+    )
     def delete(self, request, *args, **kwargs):
         """
                Delete the contact of the authenticated user.
@@ -706,6 +735,10 @@ class ContactView(APIView):
         return JsonResponse({'Status': False, 'Errors': 'Не указаны все необходимые аргументы'})
 
     # редактировать контакт
+    @extend_schema(
+        summary='Update the contact information of the authenticated user',
+        request=ContactSerializer,
+    )
     def put(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             """
