@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_rest_passwordreset',
     'drf_spectacular',
+    'cacheops',
     'backend',
 ]
 
@@ -170,9 +171,27 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://127.0.0.1:6379/1')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://127.0.0.1:6379/2')
 
+# Настройки drf_spectacular
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Дипломный проект по Python',
     'DESCRIPTION': 'Дипломный проект профессии "Python-разработчик: расширенный курс" (Нетология)',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    # "DEFAULT_QUERY_MANAGER": '_default_manager',
+}
+
+# Настройки кэширования с использованием django-cacheops
+CACHEOPS_REDIS = "redis://127.0.0.1:6379/3"
+CACHEOPS_DEFAULTS = {
+    'timeout': 60*60
+}
+CACHEOPS = {
+    # автоматическое кэширование данных модели auth.user на 15 минут
+    'auth.user': {'ops': 'get', 'timeout': 60*15},
+    # автоматическое кэширование данных остальных моделей auth на 1 час
+    'auth.*': {'ops': ('fetch', 'get')},
+    # кэширование всех запрсов к permissions на 1 час
+    'auth.permission': {'ops': 'all'},
+    # автоматическое кэширование данных остальных моделей с настройками по умолчанию (на 1 час)
+    '*.*': {},
 }
