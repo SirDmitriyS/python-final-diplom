@@ -195,3 +195,25 @@ CACHEOPS = {
     # автоматическое кэширование данных остальных моделей с настройками по умолчанию (на 1 час)
     '*.*': {},
 }
+
+# Настройки Sentry (для перехвата ошибок)
+# только если в переменных окружения задан Sentry DSN
+SENTRY_DSN = os.getenv('SENTRY_DSN')
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration()],
+
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        traces_sample_rate=1.0,
+
+        # Enable sending PII data to associate users to errors
+        send_default_pii=True,
+    )
+    print('Sentry was configured.')
+else:
+    print('Sentry DSN was not provided in environment veriables. Sentry not configured. To use Sentry set SENTRY_DSN in environment variables.')

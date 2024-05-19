@@ -13,9 +13,30 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import time
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from django.http import HttpResponse
+
+
+def trigger_error(request):
+    # unhandled error to test Sentry
+    division_by_zero = 1 / 0
+
+    # # solution to fix error, which founded by Sentry
+    # try:
+    #     division_by_zero = 1 / 0
+    # except:
+    #     division_by_zero = "Hello World"
+
+    # return HttpResponse(division_by_zero)
+
+
+def large_resource(request):
+    time.sleep(4)
+    return HttpResponse("Done!")
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -23,4 +44,8 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'), 
     path('api/schema/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    # тест использования Sentry для отслеживания ошибок
+    path('sentry-debug/', trigger_error),
+    # тест использования Sentry для поиска проблем с производительностью
+    path('large_resource/', large_resource),
 ]
