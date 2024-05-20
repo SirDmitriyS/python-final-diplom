@@ -1,6 +1,6 @@
-from drf_spectacular.utils import inline_serializer, extend_schema
+from drf_spectacular.utils import inline_serializer, extend_schema, OpenApiParameter, OpenApiTypes
 from rest_framework import serializers
-from backend.serializers import OrderSerializer, OrderItemSerializer
+from backend.serializers import OrderSerializer
 from drf_spectacular.extensions import OpenApiViewExtension
 
 
@@ -18,8 +18,22 @@ class NewTaskSerializer(serializers.Serializer):
     Status = serializers.BooleanField()
     Task_id = serializers.CharField()
 
+class ItemSerializer(serializers.Serializer):
+    product_info = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+
+
 class ItemsSerializer(serializers.Serializer):
-    items = serializers.CharField()
+    items = ItemSerializer(many=True)
+
+
+class ItemUpdateSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+
+
+class ItemsUpdateSerializer(serializers.Serializer):
+    items = ItemUpdateSerializer(many=True)
 
 
 class ConfirmEmailSerializer(serializers.Serializer):
@@ -118,9 +132,7 @@ class FixBasketView(OpenApiViewExtension):
 
             @extend_schema(
                 summary='Add an item to the user''s basket',
-                request={
-                    'items': OrderItemSerializer(many=True),
-                },
+                request=ItemsSerializer,
                 responses={
                     (200, 'application/json'): inline_serializer(
                         name='BasketViewPostOk',
@@ -137,9 +149,7 @@ class FixBasketView(OpenApiViewExtension):
 
             @extend_schema(
                 summary='Update the quantity of an item in the user''s basket',
-                request={
-                    'items': OrderItemSerializer(many=True),
-                },
+                request=ItemsUpdateSerializer,
                 responses={
                     (200, 'application/json'): inline_serializer(
                             name='BasketViewPutOk',
@@ -156,7 +166,7 @@ class FixBasketView(OpenApiViewExtension):
 
             @extend_schema(
                 summary='Remove an item from the user''s basket',
-                request=OrderItemSerializer,
+                request=ItemsSerializer,
                 responses={
                 (200, 'application/json'): inline_serializer(
                         name='BasketViewDeleteOk',
@@ -219,8 +229,8 @@ class FixPartnerOrders(OpenApiViewExtension):
             @extend_schema(
                 summary='Update the state of an order',
                 responses={
-                (200, 'application/json'): StatusSerializer
-            },
+                    (200, 'application/json'): StatusSerializer
+                },
             )
             def put(self, request, *args, **kwargs):
                 pass
