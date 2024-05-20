@@ -2,7 +2,7 @@ import pytest
 from django.urls import reverse
 from rest_framework import status
 from backend.models import User, ConfirmEmailToken, Contact
-from reference.netology_pd_diplom.tests.conftest import NEW_USER_PROFILE_INFO
+from tests.conftest import NEW_USER_PROFILE_INFO
 
 
 @pytest.mark.django_db
