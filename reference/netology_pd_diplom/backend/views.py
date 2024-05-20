@@ -17,7 +17,7 @@ from rest_framework.views import APIView
 from rest_framework_yaml.renderers import YAMLRenderer
 from rest_framework import serializers
 from ujson import loads as load_json
-from drf_spectacular.utils import extend_schema, inline_serializer
+from drf_spectacular.utils import extend_schema, inline_serializer, OpenApiParameter, OpenApiTypes
 
 from backend.models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, \
     Contact, ConfirmEmailToken, STATE_CHOICES
@@ -264,6 +264,10 @@ class ShopView(ListAPIView):
 @extend_schema(
     tags=['Shop'],
     summary='Search products',
+    parameters=[
+        OpenApiParameter('shop_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+        OpenApiParameter('category_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+    ],
     responses={
         200: ProductInfoSerializer
     },
@@ -285,6 +289,10 @@ class ProductInfoView(APIView):
 
                Args:
                - request (Request): The Django request object.
+               
+               Parameters:
+               - shop_id
+               - category_id
 
                Returns:
                - Response: The response containing the product information.
